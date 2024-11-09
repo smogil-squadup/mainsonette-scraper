@@ -41,7 +41,10 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
     }).format(price);
   };
 
-  const getPriceDifference = (retailPrice?: number, maisonettePrice?: number) => {
+  const getPriceDifference = (
+    retailPrice?: number,
+    maisonettePrice?: number
+  ) => {
     if (!retailPrice || !maisonettePrice) return null;
     const diff = ((retailPrice - maisonettePrice) / maisonettePrice) * 100;
     return diff.toFixed(1);
@@ -90,8 +93,7 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                 <Button
                   variant="ghost"
                   onClick={() => handleSort("productName")}
-                  className="flex items-center"
-                >
+                  className="flex items-center">
                   Product
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
@@ -108,12 +110,17 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
           <TableBody>
             {sortedData.map((item, index) => (
               <TableRow key={index}>
-                <TableCell className="font-medium">{item.productName}</TableCell>
+                <TableCell className="font-medium">
+                  {item.productName}
+                </TableCell>
                 <TableCell>{formatPrice(item.maisonettePrice)}</TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-2">
                     <span>{formatPrice(item.amazonPrice)}</span>
-                    {getPriceDifference(item.amazonPrice, item.maisonettePrice) && (
+                    {getPriceDifference(
+                      item.amazonPrice,
+                      item.maisonettePrice
+                    ) && (
                       <Badge
                         variant={
                           Number(
@@ -123,9 +130,8 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                             )
                           ) > 0
                             ? "destructive"
-                            : "success"
-                        }
-                      >
+                            : "secondary"
+                        }>
                         {getPriceDifference(
                           item.amazonPrice,
                           item.maisonettePrice
@@ -151,9 +157,8 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                             )
                           ) > 0
                             ? "destructive"
-                            : "success"
-                        }
-                      >
+                            : "secondary"
+                        }>
                         {getPriceDifference(
                           item.wayfairPrice,
                           item.maisonettePrice
@@ -179,9 +184,8 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                             )
                           ) > 0
                             ? "destructive"
-                            : "success"
-                        }
-                      >
+                            : "secondary"
+                        }>
                         {getPriceDifference(
                           item.targetPrice,
                           item.maisonettePrice
@@ -207,9 +211,8 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                             )
                           ) > 0
                             ? "destructive"
-                            : "success"
-                        }
-                      >
+                            : "secondary"
+                        }>
                         {getPriceDifference(
                           item.walmartPrice,
                           item.maisonettePrice
@@ -235,9 +238,8 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                             )
                           ) > 0
                             ? "destructive"
-                            : "success"
-                        }
-                      >
+                            : "secondary"
+                        }>
                         {getPriceDifference(
                           item.cbKidsPrice,
                           item.maisonettePrice
@@ -247,7 +249,9 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{new Date(item.lastUpdated).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  {new Date(item.lastUpdated).toLocaleDateString()}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
