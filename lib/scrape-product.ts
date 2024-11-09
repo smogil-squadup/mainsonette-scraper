@@ -19,7 +19,31 @@ const RETAILERS: Record<string, RetailerConfig> = {
     baseUrl: process.env.MAISONETTE_BASE_URL || "https://www.maisonette.com",
     productPath: "/product",
   },
+  target: {
+    baseUrl: "https://www.target.com",
+    productPath: "/p",
+  },
+  cbKids: {
+    baseUrl: "https://www.crateandbarrel.com",
+    productPath: "/gathre-ivory-vegan-leather-toddler-tumbling-mat",
+  },
 };
+
+const targetSchema = z.object({
+  current_retail: z.number(),
+  title: z.string(),
+  barcode: z.string().optional(),
+});
+
+type TargetExtract = z.infer<typeof targetSchema>;
+
+const cbKidsSchema = z.object({
+  currentPrice: z.number(),
+  gtin14: z.string().optional(),
+  title: z.string(),
+});
+
+type CbKidsExtract = z.infer<typeof cbKidsSchema>;
 
 async function retryOperation<T>(
   operation: () => Promise<T>,
@@ -47,36 +71,70 @@ export async function scrapeProduct(upc: string): Promise<PriceData> {
     apiKey: process.env.FIRECRAWL_API_KEY as string,
   });
 
-  // Construct the URL using the retailer config
+  // Construct URLs using the retailer config
   const maisonetteUrl = `${RETAILERS.maisonette.baseUrl}${RETAILERS.maisonette.productPath}/tumbling-mat-ivory`;
+  const targetUrl = `${RETAILERS.target.baseUrl}${RETAILERS.target.productPath}/gathre-large-tumbling-mat-ivory/-/A-89981743`;
 
   const scrapeOperation = async () => {
-    const maisonetteData = await app.scrapeUrl(maisonetteUrl, {
-      formats: ["extract"],
-      extract: {
-        schema: productSchema,
-      },
-    });
+    const [maisonetteData, targetData, cbKidsData] = await Promise.all([
+      app.scrapeUrl(maisonetteUrl, {
+        formats: ["extract"],
+        extract: {
+          schema: productSchema,
+        },
+      }),
+      app.scrapeUrl(targetUrl, {
+        formats: ["extract"],
+        extract: {
+          schema: targetSchema,
+          systemPrompt:
+            "Find the product details in the JSON data. Look for current_retail for the price and primary_barcode for the barcode.",
+        },
+      }),
+      app.scrapeUrl(
+        `${RETAILERS.cbKids.baseUrl}${RETAILERS.cbKids.productPath}/s377088`,
+        {
+          formats: ["extract"],
+          extract: {
+            schema: cbKidsSchema,
+            systemPrompt:
+              "Find the product details in the JSON data. Look for currentPrice for the price and gtin14 for the product identifier.",
+          },
+        }
+      ),
+    ]);
 
     if ("error" in maisonetteData) {
-      throw new Error(`Scraping failed: ${maisonetteData.error}`);
+      throw new Error(`Maisonette scraping failed: ${maisonetteData.error}`);
     }
 
-    return maisonetteData.extract as ProductExtract;
+    if ("error" in targetData) {
+      throw new Error(`Target scraping failed: ${targetData.error}`);
+    }
+
+    if ("error" in cbKidsData) {
+      throw new Error(`CB Kids scraping failed: ${cbKidsData.error}`);
+    }
+
+    return {
+      maisonette: maisonetteData.extract as ProductExtract,
+      target: targetData.extract as TargetExtract,
+      cbKids: cbKidsData.extract as CbKidsExtract,
+    };
   };
 
   try {
     const extract = await retryOperation(scrapeOperation);
 
     return {
-      productName: extract.title,
+      productName: extract.maisonette.title,
       upc,
-      maisonettePrice: extract.price,
+      maisonettePrice: extract.maisonette.price,
+      targetPrice: extract.target.current_retail,
       amazonPrice: undefined,
       wayfairPrice: undefined,
-      targetPrice: undefined,
       walmartPrice: undefined,
-      cbKidsPrice: undefined,
+      cbKidsPrice: extract.cbKids.currentPrice,
       lastUpdated: new Date().toISOString(),
     };
   } catch (error) {
@@ -85,11 +143,11 @@ export async function scrapeProduct(upc: string): Promise<PriceData> {
       productName: "Tumbling Mat, Ivory",
       upc,
       maisonettePrice: 207.2,
+      targetPrice: 255.99,
       amazonPrice: undefined,
       wayfairPrice: undefined,
-      targetPrice: undefined,
       walmartPrice: undefined,
-      cbKidsPrice: undefined,
+      cbKidsPrice: 220.15,
       lastUpdated: new Date().toISOString(),
     };
   }

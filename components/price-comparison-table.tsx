@@ -14,22 +14,30 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PriceData } from "@/lib/types";
+import { ReloadIcon } from "@radix-ui/react-icons";
 
 interface PriceComparisonTableProps {
-  data: PriceData[];
+  initialPrices: PriceData;
 }
 
-export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
-  const [sortField, setSortField] = useState<keyof PriceData>("productName");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [searchTerm, setSearchTerm] = useState("");
+export function PriceComparisonTable({
+  initialPrices,
+}: PriceComparisonTableProps) {
+  const [prices, setPrices] = useState<PriceData>(initialPrices);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleSort = (field: keyof PriceData) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await fetch("/api/manual-scrape", {
+        method: "POST",
+      });
+      const newPrices = await response.json();
+      setPrices(newPrices);
+    } catch (error) {
+      console.error("Failed to refresh prices:", error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -50,54 +58,34 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
     return diff.toFixed(1);
   };
 
-  const filteredData = data.filter((item) =>
-    item.productName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const sortedData = [...filteredData].sort((a, b) => {
-    const aValue = a[sortField];
-    const bValue = b[sortField];
-
-    if (aValue === undefined || bValue === undefined) return 0;
-
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      return sortDirection === "asc"
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-
-    return sortDirection === "asc"
-      ? Number(aValue) - Number(bValue)
-      : Number(bValue) - Number(aValue);
-  });
-
   return (
-    <div className="w-full">
-      <div className="flex items-center space-x-4 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
-        </div>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Price Comparison</h2>
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          variant="outline"
+          size="sm">
+          {isRefreshing ? (
+            <>
+              <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <ReloadIcon className="mr-2 h-4 w-4" />
+              Refresh Prices
+            </>
+          )}
+        </Button>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("productName")}
-                  className="flex items-center">
-                  Product
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
+              <TableHead>Product</TableHead>
               <TableHead>UPC</TableHead>
               <TableHead>Maisonette</TableHead>
               <TableHead>Amazon</TableHead>
@@ -109,153 +97,151 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell className="font-medium">
-                  {item.productName}
-                </TableCell>
-                <TableCell>{item.upc}</TableCell>
-                <TableCell>{formatPrice(item.maisonettePrice)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <span>{formatPrice(item.amazonPrice)}</span>
-                    {getPriceDifference(
-                      item.amazonPrice,
-                      item.maisonettePrice
-                    ) && (
-                      <Badge
-                        variant={
-                          Number(
-                            getPriceDifference(
-                              item.amazonPrice,
-                              item.maisonettePrice
-                            )
-                          ) > 0
-                            ? "destructive"
-                            : "secondary"
-                        }>
-                        {getPriceDifference(
-                          item.amazonPrice,
-                          item.maisonettePrice
-                        )}
-                        %
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <span>{formatPrice(item.wayfairPrice)}</span>
-                    {getPriceDifference(
-                      item.wayfairPrice,
-                      item.maisonettePrice
-                    ) && (
-                      <Badge
-                        variant={
-                          Number(
-                            getPriceDifference(
-                              item.wayfairPrice,
-                              item.maisonettePrice
-                            )
-                          ) > 0
-                            ? "destructive"
-                            : "secondary"
-                        }>
-                        {getPriceDifference(
-                          item.wayfairPrice,
-                          item.maisonettePrice
-                        )}
-                        %
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <span>{formatPrice(item.targetPrice)}</span>
-                    {getPriceDifference(
-                      item.targetPrice,
-                      item.maisonettePrice
-                    ) && (
-                      <Badge
-                        variant={
-                          Number(
-                            getPriceDifference(
-                              item.targetPrice,
-                              item.maisonettePrice
-                            )
-                          ) > 0
-                            ? "destructive"
-                            : "secondary"
-                        }>
-                        {getPriceDifference(
-                          item.targetPrice,
-                          item.maisonettePrice
-                        )}
-                        %
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <span>{formatPrice(item.walmartPrice)}</span>
-                    {getPriceDifference(
-                      item.walmartPrice,
-                      item.maisonettePrice
-                    ) && (
-                      <Badge
-                        variant={
-                          Number(
-                            getPriceDifference(
-                              item.walmartPrice,
-                              item.maisonettePrice
-                            )
-                          ) > 0
-                            ? "destructive"
-                            : "secondary"
-                        }>
-                        {getPriceDifference(
-                          item.walmartPrice,
-                          item.maisonettePrice
-                        )}
-                        %
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <span>{formatPrice(item.cbKidsPrice)}</span>
-                    {getPriceDifference(
-                      item.cbKidsPrice,
-                      item.maisonettePrice
-                    ) && (
-                      <Badge
-                        variant={
-                          Number(
-                            getPriceDifference(
-                              item.cbKidsPrice,
-                              item.maisonettePrice
-                            )
-                          ) > 0
-                            ? "destructive"
-                            : "secondary"
-                        }>
-                        {getPriceDifference(
-                          item.cbKidsPrice,
-                          item.maisonettePrice
-                        )}
-                        %
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {new Date(item.lastUpdated).toLocaleDateString()}
-                </TableCell>
-              </TableRow>
-            ))}
+            <TableRow>
+              <TableCell className="font-medium">
+                {prices.productName}
+              </TableCell>
+              <TableCell>{prices.upc}</TableCell>
+              <TableCell>{formatPrice(prices.maisonettePrice)}</TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  <span>{formatPrice(prices.amazonPrice)}</span>
+                  {getPriceDifference(
+                    prices.amazonPrice,
+                    prices.maisonettePrice
+                  ) && (
+                    <Badge
+                      variant={
+                        Number(
+                          getPriceDifference(
+                            prices.amazonPrice,
+                            prices.maisonettePrice
+                          )
+                        ) > 0
+                          ? "destructive"
+                          : "secondary"
+                      }>
+                      {getPriceDifference(
+                        prices.amazonPrice,
+                        prices.maisonettePrice
+                      )}
+                      %
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  <span>{formatPrice(prices.wayfairPrice)}</span>
+                  {getPriceDifference(
+                    prices.wayfairPrice,
+                    prices.maisonettePrice
+                  ) && (
+                    <Badge
+                      variant={
+                        Number(
+                          getPriceDifference(
+                            prices.wayfairPrice,
+                            prices.maisonettePrice
+                          )
+                        ) > 0
+                          ? "destructive"
+                          : "secondary"
+                      }>
+                      {getPriceDifference(
+                        prices.wayfairPrice,
+                        prices.maisonettePrice
+                      )}
+                      %
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  <span>{formatPrice(prices.targetPrice)}</span>
+                  {getPriceDifference(
+                    prices.targetPrice,
+                    prices.maisonettePrice
+                  ) && (
+                    <Badge
+                      variant={
+                        Number(
+                          getPriceDifference(
+                            prices.targetPrice,
+                            prices.maisonettePrice
+                          )
+                        ) > 0
+                          ? "destructive"
+                          : "secondary"
+                      }>
+                      {getPriceDifference(
+                        prices.targetPrice,
+                        prices.maisonettePrice
+                      )}
+                      %
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  <span>{formatPrice(prices.walmartPrice)}</span>
+                  {getPriceDifference(
+                    prices.walmartPrice,
+                    prices.maisonettePrice
+                  ) && (
+                    <Badge
+                      variant={
+                        Number(
+                          getPriceDifference(
+                            prices.walmartPrice,
+                            prices.maisonettePrice
+                          )
+                        ) > 0
+                          ? "destructive"
+                          : "secondary"
+                      }>
+                      {getPriceDifference(
+                        prices.walmartPrice,
+                        prices.maisonettePrice
+                      )}
+                      %
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  <span>{formatPrice(prices.cbKidsPrice)}</span>
+                  {getPriceDifference(
+                    prices.cbKidsPrice,
+                    prices.maisonettePrice
+                  ) && (
+                    <Badge
+                      variant={
+                        Number(
+                          getPriceDifference(
+                            prices.cbKidsPrice,
+                            prices.maisonettePrice
+                          )
+                        ) > 0
+                          ? "destructive"
+                          : "secondary"
+                      }>
+                      {getPriceDifference(
+                        prices.cbKidsPrice,
+                        prices.maisonettePrice
+                      )}
+                      %
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                {new Date(prices.lastUpdated).toLocaleDateString()}
+              </TableCell>
+            </TableRow>
           </TableBody>
         </Table>
       </div>
