@@ -1,7 +1,7 @@
 export interface PriceData {
-  upc: string;
   productName: string;
-  maisonettePrice: number;
+  upc: string;
+  maisonettePrice?: number;
   amazonPrice?: number;
   wayfairPrice?: number;
   targetPrice?: number;

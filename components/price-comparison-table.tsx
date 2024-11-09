@@ -98,6 +98,7 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
+              <TableHead>UPC</TableHead>
               <TableHead>Maisonette</TableHead>
               <TableHead>Amazon</TableHead>
               <TableHead>Wayfair</TableHead>
@@ -113,6 +114,7 @@ export function PriceComparisonTable({ data }: PriceComparisonTableProps) {
                 <TableCell className="font-medium">
                   {item.productName}
                 </TableCell>
+                <TableCell>{item.upc}</TableCell>
                 <TableCell>{formatPrice(item.maisonettePrice)}</TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-2">
